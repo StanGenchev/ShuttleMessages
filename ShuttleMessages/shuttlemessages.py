@@ -8,7 +8,12 @@ import datetime
 import smtplib
 import socket
 from email.message import EmailMessage
-from pymongo import MongoClient
+try:
+    from pymongo import MongoClient
+except:
+    print("You must have pymongo installed in order for this program to work.\n" +
+          "Install it using the command:\n" +
+          "sudo apt install python3-pymongo\n")
 
 class ShuttleMessages:
     """ShuttleMessages"""
@@ -26,7 +31,18 @@ class ShuttleMessages:
         self.log_file = "/var/log/shuttlemessages.log"
         self.send_to_mails = []
         self.requirements_check()
-        self.client = MongoClient('localhost', 27017)
+        try:
+            self.client = MongoClient('localhost', 27017)
+        except:
+            time = datetime.datetime.now()
+            with open(self.log_file, "a") as log:
+                log.write("Date: " +
+                          str(time.year) +
+                          "-" + str(time.month) +
+                          "-" + str(time.day) +
+                          "-" + str(time.hour) +
+                          ":" + str(time.minute) +
+                          " - Could not connect to mongo!\n")
         self.db = self.client.parties
         self.all_users = self.db.users
         self.all_rooms = self.db.rocketchat_room
@@ -83,15 +99,26 @@ class ShuttleMessages:
 
     def send_mail(self, user, diff):
         """Sends mail"""
-        for send_to_mail in self.send_to_mails:
-            msg = EmailMessage()
-            msg.set_content(diff)
-            msg['Subject'] = user
-            msg['From'] = "Shuttle" + "@" + socket.gethostname()
-            msg['To'] = send_to_mail
-            to_send = smtplib.SMTP('localhost')
-            to_send.send_message(msg)
-            to_send.quit()
+        try:
+            for send_to_mail in self.send_to_mails:
+                msg = EmailMessage()
+                msg.set_content(diff)
+                msg['Subject'] = user
+                msg['From'] = "Shuttle" + "@" + socket.gethostname()
+                msg['To'] = send_to_mail
+                to_send = smtplib.SMTP('localhost')
+                to_send.send_message(msg)
+                to_send.quit()
+        except:
+            time = datetime.datetime.now()
+            with open(self.log_file, "a") as log:
+                log.write("Date: " +
+                          str(time.year) +
+                          "-" + str(time.month) +
+                          "-" + str(time.day) +
+                          "-" + str(time.hour) +
+                          ":" + str(time.minute) +
+                          " - Could not send email!\n")
 
     def get_reports(self):
         """Writes reports to file"""
@@ -125,12 +152,12 @@ class ShuttleMessages:
                                        "-" + str(time.hour) +
                                        ":" + str(time.minute) +
                                        ":" + str(time.second) +
-                                       '\n' +
+                                       '\n\n' +
                                        "No report submitted since last check.")
                     else:
                         self.send_mail(rid['name'], diff)
-                    with open(self.reports_folder + '/' + rid["name"], "w") as write_down:
-                        write_down.write(all_reports)
+                        with open(self.reports_folder + '/' + rid["name"], "w") as write_down:
+                            write_down.write(all_reports)
                 else:
                     for report in reports:
                         all_reports += report["msg"]
@@ -150,10 +177,6 @@ class ShuttleMessages:
 
     def add_users(self):
         """Add users to monitor"""
-        self.users_to_monitor.clear()
-        old_db = open(self.users_to_monitor_file, "w")
-        old_db.write('')
-        old_db.close()
         usrs = self.all_users.find({"type":"user"}, {"_id":0, "username":1})
         for usr in usrs:
             print("\nUser: " + str(usr['username']))
