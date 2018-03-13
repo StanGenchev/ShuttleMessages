@@ -8,7 +8,6 @@ fi
 apt install python3-pymongo postfix mailutils
 
 mkdir /opt/shuttlemessages
-mkdir /opt/shuttlemessages/users
 mkdir /opt/shuttlemessages/reports
 
 cp ./ShuttleMessages/shuttlemessages.py /opt/shuttlemessages/shuttlemessages.py
