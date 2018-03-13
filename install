@@ -14,6 +14,6 @@ cp ./ShuttleMessages/shuttlemessages.py /opt/shuttlemessages/shuttlemessages.py
 cp ./ShuttleMessages/shuttlemessagestab /opt/shuttlemessages/shuttlemessagestab
 
 crontab /opt/shuttlemessages/shuttlemessagestab
-python3 /opt/shuttlemessages/shuttlemessages.py --add-mails
+python3 /opt/shuttlemessages/shuttlemessages.py --add-emails
 python3 /opt/shuttlemessages/shuttlemessages.py --add-users
 python3 /opt/shuttlemessages/shuttlemessages.py
