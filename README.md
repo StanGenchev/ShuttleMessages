@@ -1,5 +1,5 @@
 # ShuttleMessages
-Get messages from private rooms in Rocket.Chat
+Get report messages from user channels in Rocket.Chat.
 
 # How to install
 ```bash
