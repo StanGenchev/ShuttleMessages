@@ -7,13 +7,17 @@ import sys
 import datetime
 import smtplib
 import socket
+import sqlite3
 from email.message import EmailMessage
+
+current_directory = os.getcwd() + "/"
+
 try:
     from pymongo import MongoClient
 except:
     print("You must have pymongo installed in order for this program to work.\n" +
           "Install it using the command:\n" +
-          "sudo apt install python3-pymongo\n")
+          "sudo apt install python3-pymongo\nsudo dnf install python3-pymongo\n")
 
 class ShuttleMessages:
     """ShuttleMessages"""
@@ -22,15 +26,19 @@ class ShuttleMessages:
             self.argument = sys.argv[1]
         except:
             self.argument = "no-arg"
-        self.base_folder = "/opt/shuttlemessages"
-        self.users_to_monitor_file = "/opt/shuttlemessages/users"
-        self.users_to_monitor = []
-        self.rooms_to_monitor = []
-        self.reports_folder = "/opt/shuttlemessages/reports"
-        self.emails_file = "/opt/shuttlemessages/shuttle.mails"
+
+        self.database = current_directory + 'reports.db'
+        self.base_folder = current_directory
         self.log_file = "/var/log/shuttlemessages.log"
-        self.send_to_mails = []
-        self.requirements_check()
+        #self.requirements_check()
+        self.conn = sqlite3.connect(current_directory + 'reports.db')
+        self.users_to_monitor = self.conn.execute("SELECT id, username, report_num FROM users")
+        self.rooms_to_monitor = []
+        self.emails = dict(self.conn.execute("SELECT email FROM emails"))
+        print(self.users_to_monitor.fetchone())
+        print(self.users_to_monitor.fetchone())
+        print(self.users_to_monitor.fetchone())
+
         try:
             self.client = MongoClient('localhost', 27017)
         except:
@@ -43,6 +51,7 @@ class ShuttleMessages:
                           "-" + str(time.hour) +
                           ":" + str(time.minute) +
                           " - Could not connect to mongo!\n")
+
         self.db = self.client.parties
         self.all_users = self.db.users
         self.all_rooms = self.db.rocketchat_room
@@ -52,16 +61,12 @@ class ShuttleMessages:
         elif self.argument == "--add-emails":
             self.add_emails()
         elif self.argument == "--clear-emails":
-            clear = open(self.emails_file, "w")
-            clear.write('')
-            clear.close()
+            self.conn.execute("DELETE FROM emails")
+            self.conn.commit()
         elif self.argument == "--clear-users":
-            clear = open(self.users_to_monitor_file, "w")
-            clear.write('')
-            clear.close()
+            self.conn.execute("DELETE FROM users")
+            self.conn.commit()
         else:
-            self.load_usernames()
-            self.load_emails()
             self.get_reports()
         self.client.close()
 
@@ -69,38 +74,18 @@ class ShuttleMessages:
         """Checks if the required files and folders exist"""
         if not os.path.exists(self.base_folder):
             os.makedirs(self.base_folder)
-        if not os.path.exists(self.reports_folder):
-            os.makedirs(self.reports_folder)
         try:
-            os.stat(self.emails_file)
+            os.stat(self.database)
         except:
-            db_file = open(self.emails_file, "w")
-            db_file.close()
-        try:
-            os.stat(self.log_file)
-        except:
-            db_file = open(self.log_file, "w")
-            db_file.close()
-        try:
-            os.stat(self.users_to_monitor_file)
-        except:
-            db_file = open(self.users_to_monitor_file, "w")
-            db_file.close()
-
-    def load_emails(self):
-        """Load all email form file"""
-        with open(self.emails_file) as mail:
-            mails = mail.readlines()
-            for single_mail in mails:
-                if single_mail == "\n":
-                    break
-                else:
-                    self.send_to_mails.append(single_mail.replace('\n', ''))
+            self.conn.execute("CREATE TABLE IF NOT EXISTS 'users' ('id' INTEGER PRIMARY KEY AUTOINCREMENT, 'username' TEXT);")
+            self.conn.execute("CREATE TABLE IF NOT EXISTS 'reports' ('id' INTEGER PRIMARY KEY AUTOINCREMENT, 'user_id' INTEGER, 'time' TEXT, 'report' TEXT);")
+            self.conn.execute("CREATE TABLE IF NOT EXISTS 'emails' ('id' INTEGER PRIMARY KEY AUTOINCREMENT, 'email' TEXT);")
+            self.conn.commit()
 
     def send_mail(self, user, diff):
         """Sends mail"""
         try:
-            for send_to_mail in self.send_to_mails:
+            for send_to_mail in self.emails:
                 msg = EmailMessage()
                 msg.set_content(diff)
                 msg['Subject'] = user
@@ -120,84 +105,48 @@ class ShuttleMessages:
                           ":" + str(time.minute) +
                           " - Could not send email!\n")
 
-    def get_reports(self):
-        """Writes reports to file"""
+    def get_all_reports(self):
+        """Writes reports to db"""
         rids = self.all_rooms.find({"t":"p"}, {"_id":1, "name":1})
         for rid in rids:
-            if rid['name'].replace('-', '.') in self.users_to_monitor:
-                reports = self.all_messages.find({"rid":rid['_id']}, {"_id": 0, "msg":1, "ts":1})
-                all_reports = ''
+            usr = rid['name'].replace('-', '.')
+            if usr in self.users_to_monitor.values():
+                reports = self.all_messages.find({"rid":rid['_id']}, {"_id": 1, "msg":1, "ts":1})
                 for report in reports:
-                    all_reports += "\nTime Submitted: " + str(report["ts"]) + '\n\n' + report["msg"]
-                init = 0
-                try:
-                    os.stat(self.reports_folder + '/' + rid["name"])
-                except:
-                    init = 1
-                if init is 0:
-                    old = ''
-                    old_report = open(self.reports_folder + '/' + rid["name"], 'r')
-                    old = old_report.read()
-                    old_report.close()
-                    if old == "" or old == " ":
-                        diff = ""
-                    else:
-                        diff = "".join(all_reports.rsplit(old))
-                    if diff == "" or diff == '' or diff == " " or diff == '\n':
-                        time = datetime.datetime.now()
-                        self.send_mail("NO REPORT: " + rid['name'],
-                                       "Date: " + str(time.year) +
-                                       "-" + str(time.month) +
-                                       "-" + str(time.day) +
-                                       "-" + str(time.hour) +
-                                       ":" + str(time.minute) +
-                                       ":" + str(time.second) +
-                                       '\n\n' +
-                                       "No report submitted since last check.")
-                    else:
-                        self.send_mail(rid['name'], diff)
-                        with open(self.reports_folder + '/' + rid["name"], "w") as write_down:
-                            write_down.write(all_reports)
+                    self.conn.execute("INSERT INTO reports (id, user_id, time, report) VALUES ( " + str(report["_id"]) + ", '" + self.users_to_monitor[usr] + "', '" + str(report["ts"]) + "', '" + str(report["msg"]) + "' );")
+                self.send_mail(rid['name'], diff)
+                with open(self.reports_folder + '/' + rid["name"], "w") as write_down:
+                        write_down.write(all_reports)
                 else:
                     for report in reports:
                         all_reports += report["msg"]
                     with open(self.reports_folder + '/' + rid["name"], "w") as write_down:
                         write_down.write(all_reports)
 
-    def load_usernames(self):
-        """Load all usernames from file"""
-        self.users_to_monitor.clear()
-        with open(self.users_to_monitor_file) as usrs:
-            users = usrs.readlines()
-            for single_user in users:
-                if single_user == "\n":
-                    break
-                else:
-                    self.users_to_monitor.append(single_user.replace('\n', ''))
+    def latest_report(self):
+        
 
     def add_users(self):
         """Add users to monitor"""
-        usrs = self.all_users.find({"type":"user"}, {"_id":0, "username":1})
+        usrs = self.all_users.find({"type":"user"}, {"_id":1, "username":1})
         for usr in usrs:
             print("\nUser: " + str(usr['username']))
             yn = input("Do you want to add this user? (y/n): ")
             if yn == 'y' or yn == 'Y' or yn == 'Yes' or yn == 'YES':
-                with open(self.users_to_monitor_file, "a") as usr_file:
-                    usr_file.write(str(usr['username']) + '\n')
+                self.conn.execute("INSERT INTO users (id, name) VALUES ( '" + str(usr['_id']) + "', '" + str(usr['username']) + "' );")
+                self.conn.commit()
 
     def add_emails(self):
         """Add emails"""
         email = ''
         while True:
-            email = email + input("Email: ") + '\n'
+            email = input("Email: ")
             yes_no = input("Do you want to add another email? (y/n): ")
             if yes_no == "n" or yes_no == "N" or yes_no == "no" or yes_no == "No":
-                with open(self.emails_file, "a") as emails:
-                    emails.write(email)
-                print("Emails added.")
+                self.conn.commit()
                 break
             else:
-                continue
+                self.conn.execute("INSERT INTO emails (email) VALUES ( '" + email + "' );")
 
 def main():
     """Load the main class"""
