@@ -9,6 +9,7 @@ import smtplib
 import sqlite3
 import socket
 from email.message import EmailMessage
+
 try:
     from pymongo import MongoClient
 except:
@@ -120,6 +121,7 @@ class ShuttleMessages:
 	    `id`	INTEGER PRIMARY KEY AUTOINCREMENT,
 	    `username`	INTEGER,
 	    `msgid`	INTEGER,
+	    `time`	TEXT,
 	    `message`	TEXT,
 	    FOREIGN KEY(`username`) REFERENCES `Users`(`id`)
         );''')
@@ -194,7 +196,6 @@ class ShuttleMessages:
         for rid in rids:
             if rid['name'].replace('-', '.') in self.users_to_monitor:
                 reports = self.rocket_messages.find({"rid":rid['_id']}, {"_id": 0, "msg":1, "ts":1})
-                all_reports = ''
                 for report in reports:
                     all_reports += "\nTime Submitted: " + str(report["ts"]) + '\n\n' + report["msg"]
                 init = 0
