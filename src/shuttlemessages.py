@@ -84,6 +84,8 @@ class ShuttleMessages:
                       "\n\t--clear-emails\t" +
                       "Remove all emails from your 'send to' list.\n")
         
+        self.get_messages()
+
         self.rocketdb.close()
         
         self.shuttledb.close()
@@ -119,11 +121,10 @@ class ShuttleMessages:
 
         c.execute('''CREATE TABLE IF NOT EXISTS `Messages` (
 	    `id`	INTEGER PRIMARY KEY AUTOINCREMENT,
-	    `username`	INTEGER,
-	    `msgid`	INTEGER,
+	    `username`	TEXT,
+	    `msgid`	TEXT,
 	    `time`	TEXT,
-	    `message`	TEXT,
-	    FOREIGN KEY(`username`) REFERENCES `Users`(`id`)
+	    `message`	TEXT
         );''')
         
         c.execute('''CREATE TABLE IF NOT EXISTS `Emails` (
@@ -133,7 +134,6 @@ class ShuttleMessages:
         
         c.execute('''CREATE TABLE `Users` (
 	    `id`	INTEGER PRIMARY KEY AUTOINCREMENT,
-	    `userid`	INTEGER,
 	    `name`	TEXT
         );''')
 
@@ -190,68 +190,36 @@ class ShuttleMessages:
                           ":" + str(time.minute) +
                           " - Could not send email!\n")
 
-    def get_reports(self):
+    def get_messages(self):
         """Writes reports to file"""
         rids = self.rocket_rooms.find({"t":"p"}, {"_id":1, "name":1})
         for rid in rids:
-            if rid['name'].replace('-', '.') in self.users_to_monitor:
-                reports = self.rocket_messages.find({"rid":rid['_id']}, {"_id": 0, "msg":1, "ts":1})
+            user = rid['name'].replace('-', '.')
+            if user in self.users_to_monitor:
+                reports = self.rocket_messages.find({"rid":rid['_id']}, {"_id": 1, "msg":1, "ts":1})
                 for report in reports:
-                    all_reports += "\nTime Submitted: " + str(report["ts"]) + '\n\n' + report["msg"]
-                init = 0
-                try:
-                    os.stat(self.reports_folder + '/' + rid["name"])
-                except:
-                    init = 1
-                if init is 0:
-                    old = ''
-                    old_report = open(self.reports_folder + '/' + rid["name"], 'r')
-                    old = old_report.read()
-                    old_report.close()
-                    if old == "" or old == " ":
-                        diff = ""
-                    else:
-                        diff = "".join(all_reports.rsplit(old))
-                    if diff == "" or diff == '' or diff == " " or diff == '\n':
-                        time = datetime.datetime.now()
-                        self.send_mail("NO REPORT: " + rid['name'],
-                                       "Date: " + str(time.year) +
-                                       "-" + str(time.month) +
-                                       "-" + str(time.day) +
-                                       "-" + str(time.hour) +
-                                       ":" + str(time.minute) +
-                                       ":" + str(time.second) +
-                                       '\n\n' +
-                                       "No report submitted since last check.")
-                    else:
-                        self.send_mail(rid['name'], diff)
-                        with open(self.reports_folder + '/' + rid["name"], "w") as write_down:
-                            write_down.write(all_reports)
-                else:
-                    for report in reports:
-                        all_reports += report["msg"]
-                    with open(self.reports_folder + '/' + rid["name"], "w") as write_down:
-                        write_down.write(all_reports)
+                    self.shuttledb.cursor().execute("INSERT INTO Messages (username, msgid, time, message) SELECT '" + user + "','" + str(report["_id"]) + "','" + str(report["ts"]) + "'," + '"' + str(report["msg"]).replace('"', "'") + '" WHERE NOT EXISTS(SELECT username, msgid FROM Messages WHERE msgid = ' + "'" + str(report["_id"]) + "' AND username = '" + user + "')")
+        self.shuttledb.commit()
 
     def get_monitored_users(self):
         """Get all monitored users"""
         users = []
         
-        for user in self.shuttledb.cursor().execute('SELECT userid FROM Users'):
-            users.append(str(user))
+        for user in self.shuttledb.cursor().execute('SELECT name FROM Users'):
+            users.append(str(user[0]))
         
         return users
 
     def add_users(self):
         """Add users to monitor"""
-        usrs = self.rocket_users.find({"type":"user"}, {"_id":1, "username":1})
+        usrs = self.rocket_users.find({"type":"user"}, {"_id":0, "username":1})
         
         print("Answer with 'y', 'n' or 'quit'.\n")
         
         for usr in usrs:
             question = input("Add " + str(usr['username']) + "? (y/n/quit): ")
             if question == 'y' or question == 'Y' or question == 'Yes' or question == 'YES':
-                self.shuttledb.cursor().execute("INSERT INTO Users (userid, name) VALUES ('" + str(usr['_id']) + "','" + str(usr['username']) + "')")
+                self.shuttledb.cursor().execute("INSERT INTO Users (name) VALUES ('" + str(usr['username']) + "')")
             elif question == 'quit' or question == 'QUIT':
                 break
         
