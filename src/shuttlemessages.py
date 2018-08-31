@@ -39,13 +39,10 @@ class ShuttleMessages:
         
         self.users_to_monitor = self.get_monitored_users()
         
-        self.rooms_to_monitor = []
-        
-        for user in self.users_to_monitor:
-            self.rooms_to_monitor.append(user.replace('.', '-'))
-        
         self.send_to_mails = self.get_emails()
         
+        self.messages_count = self.get_messages_count()
+
         self.rocket_parties = self.rocketdb.parties
         
         self.rocket_users = self.rocket_parties.users
@@ -55,36 +52,84 @@ class ShuttleMessages:
         self.rocket_messages = self.rocket_parties.rocketchat_message
         
         if self.argument is not None:
-            if self.argument == "--add-users":
+            if self.argument == "--add-users" or self.argument == "-u":
                 self.add_users()
+                sys.exit(0)
             
-            elif self.argument == "--add-emails":
+            elif self.argument == "--add-manually" or self.argument == "-am":
+                user = input("User: ")
+                self.shuttledb.cursor().execute("INSERT INTO Users (name) VALUES ('" + user + "');")
+                self.shuttledb.commit()
+                print("User added!")
+                sys.exit(0)
+
+            elif self.argument == "--add-emails" or self.argument == "-e":
                 self.add_emails()
+                sys.exit(0)
+
+            elif self.argument == "--show-users" or self.argument == "-su":
+                for user in self.users_to_monitor:
+                    print(user)
+                sys.exit(0)
+
+            elif self.argument == "--show-emails" or self.argument == "-se":
+                for email in self.send_to_mails:
+                    print(email)
+                sys.exit(0)
             
-            elif self.argument == "--clear-emails":
+            elif self.argument == "--clear-emails" or self.argument == "-ce":
                 self.shuttledb.cursor().execute("DELETE FROM Emails")
                 self.shuttledb.commit()
                 print("Emails cleared!")
                 sys.exit(0)
             
-            elif self.argument == "--clear-users":
+            elif self.argument == "--clear-users" or self.argument == "-cu":
                 self.shuttledb.cursor().execute("DELETE FROM Users")
                 self.shuttledb.commit()
                 print("Users cleared!")
                 sys.exit(0)
             
+            elif self.argument == "--collect" or self.argument == "-c":
+                self.get_messages(False)
+                sys.exit(0)
+
+            elif self.argument == "--clear-messages" or self.argument == "-cm":
+                self.shuttledb.cursor().execute("DELETE FROM Messages")
+                self.shuttledb.commit()
+                print("Messages cleared!")
+                sys.exit(0)
+
             else:
-                print('Unknown argument - "', self.argument, '"\n')
-                print("Available options:\n\t--add-users\t" +
+                if self.argument == "--help" or self.argument == "-h":
+                    print("Available options:\n")
+
+                else:
+                    print('Unknown argument - "' + self.argument + '"\nAvailable options:\n')
+
+                print("  -h,  --help\t\t\t" +
+                      "Show this help information." +
+                      "\n  -u,  --add-users\t\t" +
                       "Add rocket.chat users to your monitored list." +
-                      "\n\t--add-emails\t" +
+                      "\n  -u,  --add-manually\t\t" +
+                      "Add rocket.chat users to your monitored list by typing the name manually." +
+                      "\n  -e,  --add-emails\t\t" +
                       "Add emails to which you would send the collected data." +
-                      "\n\t--clear-users\t" +
+                      "\n  -c,  --collect\t\t" +
+                      "Collect messages from users and do not send emails." +
+                      "\n  -su, --show-users\t\t" +
+                      "Show all monitored users." +
+                      "\n  -se, --show-emails\t\t" +
+                      "Show all 'send to' emails." +
+                      "\n  -cu, --clear-users\t\t" +
                       "Remove all users from your monitored list." +
-                      "\n\t--clear-emails\t" +
-                      "Remove all emails from your 'send to' list.\n")
+                      "\n  -ce, --clear-emails\t\t" +
+                      "Remove all emails from your 'send to' list." +
+                      "\n  -cm, --clear-messages\t\t" +
+                      "Remove all messages from the collected database.\n")
+
+                sys.exit(0)
         
-        self.get_messages()
+        self.get_messages(True)
 
         self.rocketdb.close()
         
@@ -163,23 +208,35 @@ class ShuttleMessages:
         emails = []
         
         for email in self.shuttledb.cursor().execute('SELECT email FROM Emails'):
-            emails.append(email)
+            emails.append(str(email[0]))
         
         return emails
 
-    def send_mail(self, user, diff):
+    def send_mail(self, messages):
         """Sends mail"""
         try:
-            for send_to_mail in self.send_to_mails:
+            for key, val in messages.items():
                 msg = EmailMessage()
-                msg.set_content(diff)
-                msg['Subject'] = user
+                msg.set_content(val)
+                msg['Subject'] = str(key.replace('.', ' ') + ' report.').capitalize()
                 msg['From'] = "Shuttle" + "@" + socket.gethostname()
-                msg['To'] = send_to_mail
+                msg['To'] = ', '.join(self.send_to_mails)
                 to_send = smtplib.SMTP('localhost')
                 to_send.send_message(msg)
                 to_send.quit()
+
+            for user in self.users_to_monitor:
+                if user not in messages.keys():
+                    msg = EmailMessage()
+                    msg.set_content("This user did not write his report!")
+                    msg['Subject'] = str('No Report - ' + user.replace('.', ' ')).title()
+                    msg['From'] = "Shuttle" + "@" + socket.gethostname()
+                    msg['To'] = ', '.join(self.send_to_mails)
+                    to_send = smtplib.SMTP('localhost')
+                    to_send.send_message(msg)
+                    to_send.quit()
         except:
+            print('Error - Could not send email!')
             time = datetime.datetime.now()
             with open(self.log_file, "a") as log:
                 log.write("Date: " +
@@ -190,16 +247,33 @@ class ShuttleMessages:
                           ":" + str(time.minute) +
                           " - Could not send email!\n")
 
-    def get_messages(self):
+    def get_messages(self, email):
         """Writes reports to file"""
+
         rids = self.rocket_rooms.find({"t":"p"}, {"_id":1, "name":1})
+
         for rid in rids:
             user = rid['name'].replace('-', '.')
             if user in self.users_to_monitor:
                 reports = self.rocket_messages.find({"rid":rid['_id']}, {"_id": 1, "msg":1, "ts":1})
                 for report in reports:
                     self.shuttledb.cursor().execute("INSERT INTO Messages (username, msgid, time, message) SELECT '" + user + "','" + str(report["_id"]) + "','" + str(report["ts"]) + "'," + '"' + str(report["msg"]).replace('"', "'") + '" WHERE NOT EXISTS(SELECT username, msgid FROM Messages WHERE msgid = ' + "'" + str(report["_id"]) + "' AND username = '" + user + "')")
+
         self.shuttledb.commit()
+
+        if email:
+            current_count = self.get_messages_count()
+
+            msgs = {}
+
+            if self.messages_count < current_count:
+                for msg in self.shuttledb.cursor().execute('SELECT id, username, time, message FROM Messages ORDER BY id DESC LIMIT ' + str(current_count - self.messages_count)):
+                    if str(msg[1]) in msgs.keys():
+                        msgs[str(msg[1])] += '\nTime - ' + str(msg[2]) + '\n\n' + str(msg[3] + '\n')
+                    else:
+                        msgs[str(msg[1])] = 'Time - ' + str(msg[2]) + '\n\n' + str(msg[3] + '\n')
+            self.send_mail(msgs)
+
 
     def get_monitored_users(self):
         """Get all monitored users"""
@@ -207,8 +281,16 @@ class ShuttleMessages:
         
         for user in self.shuttledb.cursor().execute('SELECT name FROM Users'):
             users.append(str(user[0]))
-        
+
         return users
+
+    def get_messages_count(self):
+        """Get all monitored users"""
+        count = 0
+
+        count = self.shuttledb.cursor().execute('SELECT count(*) FROM Messages').fetchall()
+
+        return int(count[0][0])
 
     def add_users(self):
         """Add users to monitor"""
