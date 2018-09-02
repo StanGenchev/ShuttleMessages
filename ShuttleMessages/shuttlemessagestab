@@ -1,4 +1,0 @@
-MAILTO=""
-SHELL=/bin/sh
-PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-59 20 * * *   /usr/bin/python3 /opt/shuttlemessages/shuttlemessages.py
