@@ -34,11 +34,12 @@ ninja install
 # How to automate it
 
 Add the following lines to your crontab:
-
+```bash
 MAILTO=""
 SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 59 20 * * *   /usr/bin/python3 /usr/local/bin/shuttlemessages
+```
 
 You can add them using the command:
 ```bash
