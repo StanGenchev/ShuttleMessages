@@ -2,22 +2,57 @@
 # -*- coding: utf-8 -*-
 """ShuttleMessages"""
 
-import os
 import sys
+
+try:
+    assert sys.version_info >= (3,0)
+except:
+    print('This is a python 3 application, but you are running python 2.')
+    sys.exit(1)
+
+import os
 import datetime
-import smtplib
-import sqlite3
-import socket
-from email.message import EmailMessage
+
+try:
+    import smtplib
+except:
+    print("You must have smtplib installed in order for this program to work.\n\n" +
+          "Install it using the command:\n" +
+          "sudo pip3 install smtplib\n")
+    sys.exit(1)
+
+try:
+    import sqlite3
+except:
+    print("You must have sqlite3 installed in order for this program to work.\n\n" +
+          "Install it using the command:\n" +
+          "sudo pip3 install sqlite3\n")
+    sys.exit(1)
+
+try:
+    import socket
+except:
+    print("You must have socket installed in order for this program to work.\n\n" +
+          "Install it using the command:\n" +
+          "sudo pip3 install socket\n")
+    sys.exit(1)
+
+try:
+    from email.message import EmailMessage
+except:
+    print("You must have email installed in order for this program to work.\n\n" +
+          "Install it using the command:\n" +
+          "sudo pip3 install email\n")
+    sys.exit(1)
+
 
 try:
     from pymongo import MongoClient
 except:
-    print("You must have pymongo installed in order for this program to work.\n" +
+    print("You must have pymongo installed in order for this program to work.\n\n" +
           "Install it using the command:\n" +
-          "sudo apt install python3-pymongo\n" +
-          "or:" +
-          "sudo yum install python3-pymongo\n")
+          "sudo pip3 install pymongo\n")
+    sys.exit(1)
 
 class ShuttleMessages:
     """ShuttleMessages"""
@@ -27,11 +62,11 @@ class ShuttleMessages:
         except:
             self.argument = None
 
-        self.base_folder = "/opt/shuttlemessages"
+        self.dbase_folder = "/var/shuttlemessages"
         
         self.log_file = "/var/log/shuttlemessages.log"
         
-        self.collected_db_file = self.base_folder + "/collected.db"
+        self.collected_db_file = self.dbase_folder + "/collected.db"
         
         self.requirements_check()
         
@@ -126,8 +161,7 @@ class ShuttleMessages:
                       "Remove all emails from your 'send to' list." +
                       "\n  -cm, --clear-messages\t\t" +
                       "Remove all messages from the collected database.\n")
-
-                sys.exit(0)
+                sys.exit(1)
         
         self.get_messages(True)
 
@@ -189,8 +223,8 @@ class ShuttleMessages:
     def requirements_check(self):
         """Checks if the required files and folders exist"""
         
-        if not os.path.exists(self.base_folder):
-            os.makedirs(self.base_folder)
+        if not os.path.exists(self.dbase_folder):
+            os.makedirs(self.dbase_folder)
         
         try:
             os.stat(self.log_file)
@@ -218,7 +252,7 @@ class ShuttleMessages:
             for key, val in messages.items():
                 msg = EmailMessage()
                 msg.set_content(val)
-                msg['Subject'] = str(key.replace('.', ' ') + ' report.').capitalize()
+                msg['Subject'] = str(key.replace('.', ' ') + ' report.').title()
                 msg['From'] = "Shuttle" + "@" + socket.gethostname()
                 msg['To'] = ', '.join(self.send_to_mails)
                 to_send = smtplib.SMTP('localhost')

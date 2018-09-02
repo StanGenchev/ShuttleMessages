@@ -1,27 +1,34 @@
 # ShuttleMessages
 Collect message data from chat rooms in Rocket.Chat.
 
-# How to install
+# How to build and install
 Clone the repo:
 
 ```bash
 git clone https://github.com/StanGenchev/ShuttleMessages.git
 ```
 
+Install dependencies:
+
 If running Debian/Ubuntu:
 ```bash
-sudo yum install python3-pymongo postfix mailx
+sudo apt install python3 postfix mailutils meson
+sudo pip3 install pymongo email smtplib sqlite3
 ```
 
 If running RedHat/CentOS/Fedora
 ```bash
-sudo yum install python3-pymongo postfix mailx
+sudo yum install python3 postfix mailx meson
+sudo pip3 install pymongo email smtplib sqlite3
 ```
 
+Build and install:
+
 ```bash
-mkdir /opt/shuttlemessages
-cd ShuttleMessages/src
-cp shuttlemessages.py /opt/shuttlemessages/shuttlemessages.py
+cd ShuttleMessages
+mason builddir
+cd builddir
+ninja install
 ```
 
 # How to automate it
@@ -31,7 +38,7 @@ Add the following lines to your crontab:
 MAILTO=""
 SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-59 20 * * *   /usr/bin/python3 /opt/shuttlemessages/shuttlemessages.py
+59 20 * * *   /usr/bin/python3 /usr/local/bin/shuttlemessages
 
 You can add them using the command:
 ```bash
@@ -44,49 +51,49 @@ You can collect data from a set of users. The user name must be formated as "fir
 The following command will give you a list of all the users and it will give you the ability to select which ones are to be added:
 
 ```bash
-python3 /opt/shuttlemessages/shuttlemessages.py --add-users
+shuttlemessages --add-users
 ```
 
 The following command will give you the ability to add a user manually:
 
 ```bash
-python3 /opt/shuttlemessages/shuttlemessages.py --add-manually
+shuttlemessages --add-manually
 ```
 
 To show all users from the monitored list:
 
 ```bash
-python3 /opt/shuttlemessages/shuttlemessages.py --show-users
+shuttlemessages --show-users
 ```
 
 To clear all users from the monitored list:
 
 ```bash
-python3 /opt/shuttlemessages/shuttlemessages.py --clear-users
+shuttlemessages --clear-users
 ```
 
 # How to add/show/clear emails
 You can add multiple emails to which the data will be send to.
 
 ```bash
-python3 /opt/shuttlemessages/shuttlemessages.py --add-emails
+shuttlemessages --add-emails
 ```
 
 To show all emails:
 
 ```bash
-python3 /opt/shuttlemessages/shuttlemessages.py --show-emails
+shuttlemessages --show-emails
 ```
 
 To clear all email:
 
 ```bash
-python3 /opt/shuttlemessages/shuttlemessages.py --clear-emails
+shuttlemessages --clear-emails
 ```
 
 # How to clear collected database
 You can clear all collected data using the command:
 
 ```bash
-python3 /opt/shuttlemessages/shuttlemessages.py --clear-messages
+shuttlemessages --clear-messages
 ```
