@@ -12,38 +12,11 @@ except:
 
 import os
 import datetime
+import smtplib
+import sqlite3
+import socket
 
-try:
-    import smtplib
-except:
-    print("You must have smtplib installed in order for this program to work.\n\n" +
-          "Install it using the command:\n" +
-          "sudo pip3 install smtplib\n")
-    sys.exit(1)
-
-try:
-    import sqlite3
-except:
-    print("You must have sqlite3 installed in order for this program to work.\n\n" +
-          "Install it using the command:\n" +
-          "sudo pip3 install sqlite3\n")
-    sys.exit(1)
-
-try:
-    import socket
-except:
-    print("You must have socket installed in order for this program to work.\n\n" +
-          "Install it using the command:\n" +
-          "sudo pip3 install socket\n")
-    sys.exit(1)
-
-try:
-    from email.message import EmailMessage
-except:
-    print("You must have email installed in order for this program to work.\n\n" +
-          "Install it using the command:\n" +
-          "sudo pip3 install email\n")
-    sys.exit(1)
+from email.message import EmailMessage
 
 
 try:
