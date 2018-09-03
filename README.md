@@ -46,7 +46,7 @@ You can add them using the command:
 sudo crontab -e
 ```
 
-# How to add/show/clear users
+# How to add/show/remove/clear users
 You can collect data from a set of users. The user name must be formated as "firstname.lastname" and the chat room as "firstname-lastname".
 
 The following command will give you a list of all the users and it will give you the ability to select which ones are to be added:
@@ -67,13 +67,19 @@ To show all users from the monitored list:
 shuttlemessages --show-users
 ```
 
+To remove select users from the monitored list:
+
+```bash
+shuttlemessages --remove-user
+```
+
 To clear all users from the monitored list:
 
 ```bash
 shuttlemessages --clear-users
 ```
 
-# How to add/show/clear emails
+# How to add/show/remove/clear emails
 You can add multiple emails to which the data will be send to.
 
 ```bash
@@ -84,6 +90,12 @@ To show all emails:
 
 ```bash
 shuttlemessages --show-emails
+```
+
+To remove a select email:
+
+```bash
+shuttlemessages --remove-email
 ```
 
 To clear all email:
