@@ -12,14 +12,14 @@ Install dependencies:
 
 If running Debian/Ubuntu:
 ```bash
-sudo apt install python3 postfix mailutils meson
-sudo pip3 install pymongo email smtplib sqlite3
+sudo apt install python3 python3-pip postfix mailutils
+sudo pip3 install pymongo email smtplib sqlite3 meson
 ```
 
 If running RedHat/CentOS/Fedora
 ```bash
-sudo yum install python3 postfix mailx meson
-sudo pip3 install pymongo email smtplib sqlite3
+sudo yum install python3 python3-pip postfix mailx meson
+sudo pip3 install pymongo email smtplib sqlite3 meson
 ```
 
 Build and install:
