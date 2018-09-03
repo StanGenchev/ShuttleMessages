@@ -18,7 +18,6 @@ import socket
 
 from email.message import EmailMessage
 
-
 try:
     from pymongo import MongoClient
 except:
@@ -80,11 +79,19 @@ class ShuttleMessages:
                     print(user)
                 sys.exit(0)
 
+            elif self.argument == "--remove-user" or self.argument == "-ru":
+                self.remove_user()
+                sys.exit(0)
+
             elif self.argument == "--show-emails" or self.argument == "-se":
                 for email in self.send_to_mails:
                     print(email)
                 sys.exit(0)
             
+            elif self.argument == "--remove-email" or self.argument == "-re":
+                self.remove_email()
+                sys.exit(0)
+
             elif self.argument == "--clear-emails" or self.argument == "-ce":
                 self.shuttledb.cursor().execute("DELETE FROM Emails")
                 self.shuttledb.commit()
@@ -126,8 +133,12 @@ class ShuttleMessages:
                       "Collect messages from users and do not send emails." +
                       "\n  -su, --show-users\t\t" +
                       "Show all monitored users." +
+                      "\n  -ru, --remove-user\t\t" +
+                      "Remove a user from the monitored list." +
                       "\n  -se, --show-emails\t\t" +
                       "Show all 'send to' emails." +
+                      "\n  -re, --remove-email\t\t" +
+                      "Remove email from the 'send to' list." +
                       "\n  -cu, --clear-users\t\t" +
                       "Remove all users from your monitored list." +
                       "\n  -ce, --clear-emails\t\t" +
@@ -168,7 +179,7 @@ class ShuttleMessages:
     def create_collected_db(self):
         """Creates the tables in the sqlite db file if they do not exist"""
         conn = sqlite3.connect(self.collected_db_file)
-        
+
         c = conn.cursor()
 
         c.execute('''CREATE TABLE IF NOT EXISTS `Messages` (
@@ -307,9 +318,9 @@ class ShuttleMessages:
         
         for usr in usrs:
             question = input("Add " + str(usr['username']) + "? (y/n/quit): ")
-            if question == 'y' or question == 'Y' or question == 'Yes' or question == 'YES':
+            if question == 'y' or question == 'Y' or question == 'Yes' or question == 'yes' or question == 'YES':
                 self.shuttledb.cursor().execute("INSERT INTO Users (name) VALUES ('" + str(usr['username']) + "')")
-            elif question == 'quit' or question == 'QUIT':
+            elif question == 'quit' or question == 'QUIT' or question == 'Quit':
                 break
         
         self.shuttledb.commit()
@@ -327,8 +338,29 @@ class ShuttleMessages:
             else:
                 continue
 
+    def remove_user(self):
+        for user in self.users_to_monitor:
+            question = input("Remove user - '" + user + "'? (y/n/quit): ")
+            if question == 'y' or question == 'Y' or question == 'Yes' or question == 'yes' or question == 'YES':
+                self.shuttledb.cursor().execute("DELETE FROM Users WHERE name='" + user + "'")
+            elif question == 'quit' or question == 'QUIT' or question == 'Quit':
+                break
+        self.shuttledb.commit()
+
+    def remove_email(self):
+        for email in self.send_to_mails:
+            question = input("Remove email - '" + email + "'? (y/n/quit): ")
+            if question == 'y' or question == 'Y' or question == 'Yes' or question == 'yes' or question == 'YES':
+                self.shuttledb.cursor().execute("DELETE FROM Emails WHERE email='" + email + "'")
+            elif question == 'quit' or question == 'QUIT' or question == 'Quit':
+                break
+        self.shuttledb.commit()
+
 def main():
-    """Load the main class"""
+    """Check permissions and load the main class"""
+    if os.geteuid() != 0:
+        print('You need root permissions to run this program!')
+        sys.exit(1)
     ShuttleMessages()
 
 if __name__ == "__main__":
