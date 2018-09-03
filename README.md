@@ -28,7 +28,7 @@ Build and install:
 cd ShuttleMessages
 meson builddir
 cd builddir
-ninja install
+sudo ninja install
 ```
 
 # How to automate it
