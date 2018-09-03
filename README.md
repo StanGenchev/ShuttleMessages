@@ -18,7 +18,7 @@ sudo pip3 install pymongo email smtplib sqlite3 meson
 
 If running RedHat/CentOS/Fedora
 ```bash
-sudo yum install python3 python3-pip postfix mailx meson
+sudo yum install python3 python3-pip postfix mailx
 sudo pip3 install pymongo email smtplib sqlite3 meson
 ```
 
