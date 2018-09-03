@@ -13,20 +13,20 @@ Install dependencies:
 If running Debian/Ubuntu:
 ```bash
 sudo apt install python3 python3-pip postfix mailutils
-sudo pip3 install pymongo meson
+sudo pip3 install pymongo meson ninja
 ```
 
 If running RedHat/CentOS/Fedora
 ```bash
 sudo yum install python3 python3-pip postfix mailx
-sudo pip3 install pymongo meson
+sudo pip3 install pymongo meson ninja
 ```
 
 Build and install:
 
 ```bash
 cd ShuttleMessages
-mason builddir
+meson builddir
 cd builddir
 ninja install
 ```
